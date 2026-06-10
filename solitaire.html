@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Retro Solitaire</title>
+<style>
+body{background:#0d0f12;font-family:'Courier New',monospace;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;user-select:none}
+#game-container{background:#15181f;border:4px solid #33363f;border-radius:12px;padding:20px;box-shadow:0 0 30px rgba(0,255,102,0.2);width:700px}
+.dashboard{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;font-weight:bold}
+.exit-btn{background:#2a1f2d;border:1px solid #f0f;color:#f0f;padding:6px 12px;border-radius:4px;cursor:pointer;text-decoration:none;font-size:0.9rem}
+.exit-btn:hover{background:#f0f;color:#000}
+#sc{color:#0f6}
+.row{display:flex;justify-content:space-between;height:110px;margin-bottom:20px}
+.tableau-area{display:flex;justify-content:space-between;min-height:400px}
+.slot{width:75px;height:105px;border:2px dashed #444a56;border-radius:6px;position:relative}
+.card{width:75px;height:105px;border-radius:6px;position:absolute;top:0;left:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:5px;font-weight:bold;font-size:1.2rem;cursor:pointer;border:1px solid #222;background:#e4e4e4;line-height:1}
+.red{color:#c00}
+.black{color:#000}
+.back{background:#1a2e24;border:2px solid #0f6;padding-top:0;justify-content:center}
+.controls-tip{text-align:center;color:#666e7d;font-size:0.8rem;margin-top:20px;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div id="game-container">
+    <div class="dashboard"><a href="index.html" class="exit-btn">&#9664; MENU</a><div id="sc">SCORE: 0</div></div>
+    <div class="row">
+        <div style="display:flex;gap:15px"><div id="st" class="slot" onclick="dS()"></div><div id="w" class="slot" onclick="cW()"></div></div>
+        <div style="display:flex;gap:15px"><div id="f0" class="slot"></div><div id="f1" class="slot"></div><div id="f2" class="slot"></div><div id="f3" class="slot"></div></div>
+    </div>
+    <div class="tableau-area">
+        <div id="t0" class="slot"></div><div id="t1" class="slot"></div><div id="t2" class="slot"></div><div id="t3" class="slot"></div><div id="t4" class="slot"></div><div id="t5" class="slot"></div><div id="t6" class="slot"></div>
+    </div>
+    <div class="controls-tip">CLICK DECK TO DRAW | CLICK ANY FACE-UP CARD TO AUTO-ROUTE IT</div>
+</div>
+<script>
+let D=[],S=[],W=[],F=[[],[],[],[]],T=[[],[],[],[],[],[],[]],sc=0;
+const U=[{s:'\u2660',c:'black'},{s:'\u2665',c:'red'},{s:'\u2663',c:'black'},{s:'\u2666',c:'red'}],R=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const el=(id)=>document.getElementById(id);
+function init(){
+    D=[];S=[];W=[];F=[[],[],[],[]];T=[[],[],[],[],[],[],[]];sc=0;
+    U.forEach(u=>R.forEach((r,i)=>D.push({s:u.s,c:u.c,r,v:i+1,up:0})));
+    for(let i=51;i>0;i--){let j=Math.floor(Math.random()*(i+1)),t=D[i];D[i]=D[j];D[j]=t;}
+    for(let c=0;c<7;c++)for(let r=0;r<=c;r++){let cd=D.pop();if(r===c)cd.up=1;T[c].push(cd);}
+    S=D;rB();
+}
+function dS(){
+    if(S.length>0){let c=S.pop();c.up=1;W.push(c);}
+    else if(W.length>0){S=W.reverse();S.forEach(c=>c.up=0);W=[];}
+    rB();
+}
+function cW(){
+    if(!W.length)return; let c=W[W.length-1];
+    if(mF(c)){W.pop();sc+=10;}else if(mT([c])){W.pop();sc+=5;} rB();
+}
+function cT(cI,rI){
+    let c=T[cI],cd=c[rI];
+    if(!cd.up&&rI===c.length-1){cd.up=1;sc+=5;rB();return;}
+    if(!cd.up)return;
+    if(rI===c.length-1&&mF(cd)){c.pop();sc+=15;rB();return;}
+    let st=c.slice(rI); if(mT(st)){T[cI]=c.slice(0,rI);rB();}
+}
+function mF(c){
+    for(let i=0;i<4;i++){
+        let f=F[i];
+        if(!f.length){if(c.v===1){f.push(c);return 1;}}
+        else{let t=f[f.length-1];if(t.s===c.s&&t.v+1===c.v){f.push(c);return 1;}}
+    }return 0;
+}
+function mT(s){
+    let b=s[0];
+    for(let i=0;i<7;i++){
+        let t=T[i];
+        if(!t.length){if(b.v===13){T[i]=t.concat(s);return 1;}}
+        else{let tp=t[t.length-1];if(tp.c!==b.c&&tp.v-1===b.v){T[i]=t.concat(s);return 1;}}
+    }return 0;
+}
+function rB(){
+    el('sc').innerText="SCORE: "+sc;
+    el('st').innerHTML=S.length?'<div class="card back"></div>':'';
+    el('w').innerHTML=W.length?`<div class="card ${W[W.length-1].c}"><div>${W[W.length-1].r}</div><div>${W[W.length-1].s}</div></div>`:'';
+    for(let i=0;i<4;i++)el('f'+i).innerHTML=F[i].length?`<div class="card ${F[i][F[i].length-1].c}"><div>${F[i][F[i].length-1].r}</div><div>${F[i][F[i].length-1].s}</div></div>`:'';
+    for(let i=0;i<7;i++){
+        let tE=el('t'+i);tE.innerHTML='';
+        let faceDownCount = 0;
+        T[i].forEach((c,j)=>{
+            let d=document.createElement('div');
+            // If face down, stack tightly. If face up, cascade with a larger 30px gap.
+            let yOffset = c.up ? (faceDownCount * 15) + ((j - faceDownCount) * 30) : (j * 15);
+            if (!c.up) faceDownCount++;
+            
+            d.className=`card ${c.up?c.c:'back'}`;
+            d.style.top=yOffset+'px';
+            if(c.up)d.innerHTML=`<div>${c.r} ${c.s}</div>`;
+            d.onclick=()=>cT(i,j);tE.appendChild(d);
+        });
+    }
+    if(F.reduce((a,b)=>a+b.length,0)===52)setTimeout(()=>alert("MATRIX CLEARED! Score: "+sc),100);
+}
+init();
+</script>
+</body>
+</html>

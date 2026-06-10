@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Meteor Strike - Infinite Edition</title>
+    <style>
+        body { background-color: #0d0f12; font-family: 'Courier New', Courier, monospace; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        #game-container { background: #15181f; border: 4px solid #33363f; border-radius: 12px; padding: 20px; box-shadow: 0 0 30px rgba(0, 255, 102, 0.2); }
+        .dashboard { display: flex; justify-content: space-between; align-items: center; width: 480px; margin-bottom: 10px; font-weight: bold; }
+        .exit-btn { background: #2a1f2d; border: 1px solid #ff00ff; color: #ff00ff; padding: 6px 12px; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 0.9rem; transition: all 0.2s; }
+        .exit-btn:hover { background: #ff00ff; color: #000000; }
+        .stats-panel { display: flex; gap: 20px; }
+        #level-indicator { color: #ff00ff; }
+        #score-indicator { color: #00ff66; }
+        canvas { background: #020205; border: 2px solid #444; display: block; }
+        .controls-tip { text-align: center; color: #666e7d; font-size: 0.8rem; margin-top: 10px; letter-spacing: 1px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <div class="dashboard">
+        <a href="index.html" class="exit-btn">◀ MENU</a>
+        <div class="stats-panel">
+            <div id="level-indicator">SECTOR: 1</div>
+            <div id="score-indicator">SCORE: 0</div>
+        </div>
+    </div>
+    <canvas id="gameCanvas" width="480" height="450"></canvas>
+    <div class="controls-tip">← / → ARROWS TO MOVE SHIP | SPACEBAR TO FIRE<br><span style="color: #a44ac4;">[ CLICK MENU TO EXIT ]</span></div>
+</div>
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const levelDisplay = document.getElementById("level-indicator");
+    const scoreDisplay = document.getElementById("score-indicator");
+
+    let currentLevel = 1; let score = 0; let gameLoop; let gameActive = false; let keys = {};
+    let player = { x: 220, y: 400, width: 32, height: 32, speed: 6 };
+    let bullets = []; let meteors = [];
+    let spawnTimer = 0; let spawnInterval = 45;
+
+    window.addEventListener("keydown", e => {
+        keys[e.code] = true;
+        if (["Space", "ArrowLeft", "ArrowRight", "Enter"].includes(e.code)) e.preventDefault();
+        if (e.code === "Space" && gameActive) fireLaser();
+        if (!gameActive && e.code === "Enter") resetEntireGame();
+    });
+    window.addEventListener("keyup", e => { keys[e.code] = false; });
+
+    function initLevel(lvl) {
+        currentLevel = lvl; levelDisplay.innerText = "SECTOR: " + currentLevel;
+        bullets = []; meteors = []; spawnTimer = 0;
+        spawnInterval = Math.max(50 - (lvl * 4), 15);
+        ctx.textAlign = "center"; ctx.textBaseline = "middle"; gameActive = true;
+    }
+
+    function resetEntireGame() {
+        score = 0; scoreDisplay.innerText = "SCORE: " + score; player.x = 220;
+        initLevel(1); clearInterval(gameLoop); gameLoop = setInterval(update, 1000 / 60);
+    }
+
+    function fireLaser() {
+        if (bullets.length < 4) bullets.push({ x: player.x + 16, y: player.y, speed: 8 });
+    }
+
+    function update() {
+        if (!gameActive) return;
+
+        if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
+        if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            bullets[i].y -= bullets[i].speed;
+            if (bullets[i].y < 0) bullets.splice(i, 1);
+        }
+
+        spawnTimer++;
+        if (spawnTimer >= spawnInterval) {
+            spawnTimer = 0;
+            let speedY = 1.8 + (currentLevel * 0.4);
+            let speedX = (Math.random() - 0.5) * (currentLevel * 0.3);
+            meteors.push({ x: Math.random() * (canvas.width - 30), y: -30, width: 26, height: 26, dx: speedX, dy: speedY });
+        }
+
+        for (let i = meteors.length - 1; i >= 0; i--) {
+            let m = meteors[i];
+            m.x += m.dx; m.y += m.dy;
+
+            if (m.x < 0 || m.x > canvas.width - m.width) m.dx *= -1;
+
+            if (m.x < player.x + player.width - 4 && m.x + m.width > player.x + 4 && m.y < player.y + player.height - 4 && m.y + m.height > player.y + 4) {
+                triggerGameOver(); return;
+            }
+
+            if (m.y > canvas.height) {
+                meteors.splice(i, 1); score += 5; scoreDisplay.innerText = "SCORE: " + score;
+                if (score > 0 && score % (currentLevel * 250) === 0) { currentLevel++; initLevel(currentLevel); }
+            }
+        }
+
+        for (let b = bullets.length - 1; b >= 0; b--) {
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                let m = meteors[i]; let blt = bullets[b];
+                if (blt.x >= m.x && blt.x <= m.x + m.width && blt.y >= m.y && blt.y <= m.y + m.height) {
+                    meteors.splice(i, 1); bullets.splice(b, 1);
+                    score += 25 * currentLevel; scoreDisplay.innerText = "SCORE: " + score; break;
+                }
+            }
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#ff00ff";
+        bullets.forEach(blt => { ctx.fillRect(blt.x - 2, blt.y, 4, 12); });
+        ctx.font = "24px Arial";
+        meteors.forEach(m => { ctx.fillText("🪨", m.x + (m.width / 2), m.y + (m.height / 2)); });
+        ctx.font = "28px Arial";
+        ctx.fillText("🛸", player.x + (player.width / 2), player.y + (player.height / 2));
+    }
+
+    function triggerGameOver() {
+        gameActive = false; clearInterval(gameLoop);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "28px 'Courier New'"; ctx.fillStyle = "#ff0000"; ctx.fillText("HULL COLLAPSED", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.font = "16px 'Courier New'"; ctx.fillStyle = "#ffffff"; ctx.fillText("FINAL SCORE: " + score, canvas.width / 2, canvas.height / 2 + 15);
+        ctx.font = "13px 'Courier New'"; ctx.fillStyle = "#00ff66"; ctx.fillText("PRESS [ENTER] TO DISPATCH FRESH RECON UNIT", canvas.width / 2, canvas.height / 2 + 50);
+    }
+
+    resetEntireGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cyber Snake - Infinite Edition</title>
+    <style>
+        body { background-color: #0d0f12; font-family: 'Courier New', Courier, monospace; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        #game-container { background: #15181f; border: 4px solid #33363f; border-radius: 12px; padding: 20px; box-shadow: 0 0 30px rgba(0, 255, 102, 0.2); }
+        .dashboard { display: flex; justify-content: space-between; align-items: center; width: 400px; margin-bottom: 10px; font-weight: bold; }
+        .exit-btn { background: #2a1f2d; border: 1px solid #ff00ff; color: #ff00ff; padding: 6px 12px; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 0.9rem; transition: all 0.2s; }
+        .exit-btn:hover { background: #ff00ff; color: #000000; }
+        .stats-panel { display: flex; gap: 20px; }
+        #level-indicator { color: #ff00ff; }
+        #score-indicator { color: #00ff66; }
+        canvas { background: #000; border: 2px solid #444; display: block; }
+        .controls-tip { text-align: center; color: #666e7d; font-size: 0.8rem; margin-top: 10px; letter-spacing: 1px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <div class="dashboard">
+        <a href="index.html" class="exit-btn">◀ MENU</a>
+        <div class="stats-panel">
+            <div id="level-indicator">CORE TIER: 1</div>
+            <div id="score-indicator">SCORE: 0</div>
+        </div>
+    </div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="controls-tip">ARROW KEYS TO STEER DIRECTION VECTOR<br><span style="color: #a44ac4;">[ CLICK MENU TO EXIT ]</span></div>
+</div>
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const levelDisplay = document.getElementById("level-indicator");
+    const scoreDisplay = document.getElementById("score-indicator");
+    const gridSize = 20; const tileCount = canvas.width / gridSize;
+
+    let currentLevel = 1; let score = 0; let appleEatenCount = 0; let gameLoop; let gameActive = false;
+    let snake = []; let apple = { x: 5, y: 5 }; let dx = 1; let dy = 0; let nextDirectionQueue = { x: 1, y: 0 };
+    let baseIntervalSpeed = 130;
+
+    window.addEventListener("keydown", e => {
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"].includes(e.code)) e.preventDefault();
+        if (!gameActive && e.code === "Enter") { resetEntireGame(); return; }
+        if (gameActive) {
+            if (e.code === "ArrowUp" && dy === 0) { nextDirectionQueue = { x: 0, y: -1 }; }
+            if (e.code === "ArrowDown" && dy === 0) { nextDirectionQueue = { x: 0, y: 1 }; }
+            if (e.code === "ArrowLeft" && dx === 0) { nextDirectionQueue = { x: -1, y: 0 }; }
+            if (e.code === "ArrowRight" && dx === 0) { nextDirectionQueue = { x: 1, y: 0 }; }
+        }
+    });
+
+    function initLevel(lvl) {
+        currentLevel = lvl; levelDisplay.innerText = "CORE TIER: " + currentLevel;
+        let dynamicSpeed = Math.max(baseIntervalSpeed - (lvl * 12), 45);
+        gameActive = true; clearInterval(gameLoop); gameLoop = setInterval(update, dynamicSpeed);
+    }
+
+    function resetEntireGame() {
+        score = 0; appleEatenCount = 0; scoreDisplay.innerText = "SCORE: " + score;
+        snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
+        dx = 1; dy = 0; nextDirectionQueue = { x: 1, y: 0 };
+        spawnApple(); initLevel(1);
+    }
+
+    function spawnApple() {
+        apple.x = Math.floor(Math.random() * tileCount);
+        apple.y = Math.floor(Math.random() * tileCount);
+        for (let i = 0; i < snake.length; i++) {
+            if (snake[i].x === apple.x && snake[i].y === apple.y) {
+                spawnApple(); break;
+            }
+        }
+    }
+
+    function update() {
+        if (!gameActive) return;
+        dx = nextDirectionQueue.x; dy = nextDirectionQueue.y;
+        let head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+        if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) { triggerGameOver(); return; }
+        for (let i = 0; i < snake.length; i++) { if (snake[i].x === head.x && snake[i].y === head.y) { triggerGameOver(); return; } }
+
+        snake.unshift(head);
+
+        if (head.x === apple.x && head.y === apple.y) {
+            score += 50 * currentLevel; scoreDisplay.innerText = "SCORE: " + score; appleEatenCount++;
+            spawnApple();
+            if (appleEatenCount % 5 === 0) { currentLevel++; initLevel(currentLevel); }
+        } else {
+            snake.pop();
+        }
+
+        ctx.fillStyle = "#000000"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#11141a"; ctx.lineWidth = 1;
+        for (let i = 0; i < tileCount; i++) {
+            ctx.beginPath(); ctx.moveTo(i * gridSize, 0); ctx.lineTo(i * gridSize, canvas.height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i * gridSize); ctx.lineTo(canvas.width, i * gridSize); ctx.stroke();
+        }
+        ctx.font = "16px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("🍎", (apple.x * gridSize) + (gridSize / 2), (apple.y * gridSize) + (gridSize / 2));
+        snake.forEach((segment, idx) => {
+            ctx.fillStyle = idx === 0 ? "#00ff66" : "#00aa44";
+            ctx.fillRect(segment.x * gridSize + 1, segment.y * gridSize + 1, gridSize - 2, gridSize - 2);
+        });
+    }
+
+    function triggerGameOver() {
+        gameActive = false; clearInterval(gameLoop);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.9)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = "24px 'Courier New'"; ctx.fillStyle = "#ff0000"; ctx.textAlign = "center"; ctx.fillText("SEGMENTATION FAULT", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.font = "16px 'Courier New'"; ctx.fillStyle = "#ffffff"; ctx.fillText("FINAL SCORE: " + score, canvas.width / 2, canvas.height / 2 + 15);
+        ctx.font = "13px 'Courier New'"; ctx.fillStyle = "#00ff66"; ctx.fillText("PRESS [ENTER] TO REBOOT CORE RECOVERY", canvas.width / 2, canvas.height / 2 + 50);
+    }
+
+    resetEntireGame();
+</script>
+</body>
+</html>

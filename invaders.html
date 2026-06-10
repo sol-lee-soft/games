@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cosmic Invaders - Infinite Edition (Fortified)</title>
+    <style>
+        body {
+            background-color: #0d0f12;
+            font-family: 'Courier New', Courier, monospace;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        #game-container {
+            background: #15181f;
+            border: 4px solid #33363f;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 102, 0.2);
+        }
+        .dashboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 500px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .exit-btn {
+            background: #2a1f2d;
+            border: 1px solid #ff00ff;
+            color: #ff00ff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .exit-btn:hover {
+            background: #ff00ff;
+            color: #000000;
+        }
+
+        .stats-panel {
+            display: flex;
+            gap: 20px;
+        }
+        #level-indicator { color: #ff00ff; }
+        #score-indicator { color: #00ff66; }
+        
+        canvas {
+            background: #000;
+            border: 2px solid #444;
+            display: block;
+        }
+        .controls-tip {
+            text-align: center;
+            color: #666e7d;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            letter-spacing: 1px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="dashboard">
+        <a href="index.html" class="exit-btn">◀ MENU</a>
+        <div class="stats-panel">
+            <div id="level-indicator">STAGE: 1</div>
+            <div id="score-indicator">SCORE: 0</div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas" width="500" height="400"></canvas>
+    
+    <div class="controls-tip">
+        ← / → ARROWS TO MOVE | SPACEBAR TO FIRE<br>
+        <span style="color: #a44ac4;">[ CLICK MENU TO EXIT ]</span>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const levelDisplay = document.getElementById("level-indicator");
+    const scoreDisplay = document.getElementById("score-indicator");
+
+    let currentLevel = 1;
+    let score = 0;
+    let gameLoop;
+    let gameActive = false;
+    let keys = {};
+
+    let player = { x: 235, y: 360, width: 30, height: 30, speed: 5 };
+    let bullets = [];
+    let alienBullets = [];
+    let invaders = [];
+    let bunkers = [];
+    let direction = 1;
+    let baseSpeed = 1.0;
+
+    window.addEventListener("keydown", e => {
+        if (e.key === "Escape" || e.code === "Escape") {
+            window.location.assign("index.html");
+            return; 
+        }
+
+        keys[e.code] = true;
+        if (["Space", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+        
+        if (e.code === "Space" && gameActive) {
+            firePlayerBullet();
+        }
+        if (e.code === "Enter" && !gameActive) {
+            resetEntireGame();
+        }
+    });
+    
+    window.addEventListener("keyup", e => { keys[e.code] = false; });
+
+    function initLevel(lvl) {
+        currentLevel = lvl;
+        levelDisplay.innerText = "STAGE: " + currentLevel;
+        bullets = [];
+        alienBullets = [];
+        invaders = [];
+        direction = 1;
+        
+        let cols = 4 + Math.min(lvl, 4);
+        let rows = 2 + Math.min(Math.floor(lvl / 2), 3);
+        baseSpeed = 0.6 + (lvl * 0.3); 
+
+        let alienSprites = ["👾", "🛸", "🐙", "😈"];
+        let currentSprite = alienSprites[(lvl - 1) % alienSprites.length];
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                invaders.push({
+                    x: 40 + c * 55,
+                    y: 40 + r * 35,
+                    width: 25,
+                    height: 25,
+                    alive: true,
+                    sprite: currentSprite
+                });
+            }
+        }
+
+        bunkers = [
+            { x: 90, y: 310, health: 4 },
+            { x: 235, y: 310, health: 4 },
+            { x: 380, y: 310, health: 4 }
+        ];
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        gameActive = true;
+    }
+
+    function resetEntireGame() {
+        score = 0;
+        scoreDisplay.innerText = "SCORE: " + score;
+        player.x = 235;
+        initLevel(1);
+        clearInterval(gameLoop);
+        gameLoop = setInterval(update, 1000 / 60);
+    }
+
+    function firePlayerBullet() {
+        if (bullets.length < 3) {
+            bullets.push({ x: player.x + 15, y: player.y, speed: 7 });
+        }
+    }
+
+    function update() {
+        if (!gameActive) return;
+
+        if (keys["ArrowLeft"] && player.x > 0) player.x -= player.speed;
+        if (keys["ArrowRight"] && player.x < canvas.width - player.width) player.x += player.speed;
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            bullets[i].y -= bullets[i].speed;
+            if (bullets[i].y < 0) bullets.splice(i, 1);
+        }
+
+        for (let i = alienBullets.length - 1; i >= 0; i--) {
+            alienBullets[i].y += alienBullets[i].speed;
+            
+            if (alienBullets[i].x >= player.x && alienBullets[i].x <= player.x + player.width &&
+                alienBullets[i].y >= player.y && alienBullets[i].y <= player.y + player.height) {
+                triggerGameOver();
+                return;
+            }
+            
+            if (alienBullets[i].y > canvas.height) {
+                alienBullets.splice(i, 1);
+            }
+        }
+
+        if (currentLevel > 1 && Math.random() < (0.003 * currentLevel) && invaders.some(b => b.alive)) {
+            let livingAliens = invaders.filter(inv => inv.alive);
+            let shooter = livingAliens[Math.floor(Math.random() * livingAliens.length)];
+            alienBullets.push({ x: shooter.x + 12, y: shooter.y + 20, speed: 3.5 + (currentLevel * 0.15) });
+        }
+
+        let shiftDown = false;
+        invaders.forEach(inv => {
+            if (!inv.alive) return;
+            inv.x += baseSpeed * direction;
+            if (inv.x > canvas.width - inv.width || inv.x < 0) shiftDown = true;
+        });
+
+        if (shiftDown) {
+            direction *= -1;
+            invaders.forEach(inv => {
+                if (!inv.alive) return;
+                inv.y += 15;
+                if (inv.y + inv.height >= 310) triggerGameOver(); 
+            });
+        }
+
+        for (let b = bullets.length - 1; b >= 0; b--) {
+            for (let i = 0; i < invaders.length; i++) {
+                let inv = invaders[i];
+                if (inv.alive && 
+                    bullets[b].x >= inv.x && bullets[b].x <= inv.x + inv.width &&
+                    bullets[b].y >= inv.y && bullets[b].y <= inv.y + inv.height) {
+                    
+                    inv.alive = false;
+                    bullets.splice(b, 1);
+                    score += 10 * currentLevel;
+                    scoreDisplay.innerText = "SCORE: " + score;
+                    break;
+                }
+            }
+        }
+
+        let checkBunkers = (bulletArray) => {
+            for (let b = bulletArray.length - 1; b >= 0; b--) {
+                for (let bu = 0; bu < bunkers.length; bu++) {
+                    let bunk = bunkers[bu];
+                    if (bunk.health > 0 &&
+                        bulletArray[b].x >= bunk.x && bulletArray[b].x <= bunk.x + 35 &&
+                        bulletArray[b].y >= bunk.y && bulletArray[b].y <= bunk.y + 25) {
+                        
+                        bunk.health--;
+                        bulletArray.splice(b, 1);
+                        break;
+                    }
+                }
+            }
+        };
+        checkBunkers(bullets);
+        checkBunkers(alienBullets);
+
+        if (invaders.every(inv => !inv.alive)) {
+            currentLevel++;
+            initLevel(currentLevel);
+        }
+
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.font = "24px Arial";
+        ctx.fillText("🚀", player.x + 15, player.y);
+
+        ctx.fillStyle = "#00ff66";
+        bullets.forEach(b => ctx.fillRect(b.x - 2, b.y, 4, 10));
+
+        ctx.fillStyle = "#ff00ff";
+        alienBullets.forEach(ab => ctx.fillRect(ab.x - 2, ab.y, 4, 10));
+
+        ctx.font = "22px Arial";
+        invaders.forEach(inv => {
+            if (inv.alive) ctx.fillText(inv.sprite, inv.x + 12, inv.y);
+        });
+
+        bunkers.forEach(b => {
+            if (b.health > 0) {
+                ctx.font = "30px Arial";
+                ctx.globalAlpha = b.health / 4;
+                ctx.fillText("🧱", b.x + 18, b.y);
+                ctx.globalAlpha = 1.0;
+            }
+        });
+    }
+
+    function triggerGameOver() {
+        gameActive = false;
+        clearInterval(gameLoop);
+        
+        ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = "28px 'Courier New'";
+        ctx.fillStyle = "#ff0000";
+        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+        
+        ctx.font = "16px 'Courier New'";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("FINAL SCORE: " + score, canvas.width / 2, canvas.height / 2 + 15);
+        
+        ctx.font = "13px 'Courier New'";
+        ctx.fillStyle = "#00ff66";
+        ctx.fillText("PRESS [ENTER] TO RE-ENGAGE SIMULATION", canvas.width / 2, canvas.height / 2 + 50);
+    }
+
+    resetEntireGame();
+</script>
+
+</body>
+</html>

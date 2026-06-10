@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Arcade Console - Master Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+        body { background-color: #0d0f12; font-family: 'Courier New', Courier, monospace; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        
+        @keyframes flicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; text-shadow: 0 0 10px #00ff66, 0 0 20px #00ff66; }
+            20%, 24%, 55% { opacity: 0.4; text-shadow: none; }
+        }
+
+        #cabinet-frame { width: 100%; max-width: 600px; background: #15181f; border: 4px solid #33363f; border-radius: 12px; box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 255, 102, 0.3); padding: 25px; text-align: center; position: relative; z-index: 1; overflow: hidden; }
+        #cabinet-frame::after { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 4px, 3px 100%; z-index: 100; pointer-events: none; }
+        
+        #marquee { border-bottom: 3px double #00ff66; padding-bottom: 15px; margin-bottom: 25px; position: relative; z-index: 2; }
+        #marquee h1 { font-size: 2.2rem; letter-spacing: 3px; color: #ffffff; text-transform: uppercase; animation: flicker 6s infinite alternate; }
+        #marquee .sub-text { font-size: 0.9rem; color: #ff00ff; font-weight: bold; letter-spacing: 2px; margin-top: 5px; text-transform: uppercase; }
+
+        #menu-list { display: flex; flex-direction: column; gap: 14px; position: relative; z-index: 2; }
+        .arcade-link { text-decoration: none; display: block; width: 100%; }
+        .arcade-button { width: 100%; background: #1e222b; border: 2px solid #444a56; border-radius: 6px; padding: 16px 20px; display: flex; align-items: center; justify-content: flex-start; cursor: pointer; transition: all 0.15s ease; }
+        .arcade-button:hover { border-color: #00ff66; background: #1a2e24; box-shadow: 0 0 12px rgba(0, 255, 102, 0.4); transform: translateX(6px); }
+        .btn-icon { font-size: 1.8rem; margin-right: 20px; display: inline-block; }
+        .btn-title { font-size: 1.2rem; font-weight: bold; color: #ffffff; letter-spacing: 1px; text-transform: uppercase; }
+
+        #diagnostic-panel { margin-top: 25px; padding-top: 15px; border-top: 1px solid #2a2f3a; position: relative; z-index: 2; text-align: left; }
+        .diag-row { display: flex; justify-content: space-between; font-size: 0.85rem; color: #666e7d; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; }
+        .troubleshoot-log { font-size: 0.75rem; color: #444a56; margin-top: 10px; font-style: italic; }
+    </style>
+</head>
+<body>
+
+    <div id="cabinet-frame">
+        <div id="marquee">
+            <h1>Arcade Console</h1>
+            <div class="sub-text">SYSTEM CORE LINK OK</div>
+        </div>
+
+        <div id="menu-list">
+            <a href="invaders.html" class="arcade-link"><div class="arcade-button"><span class="btn-icon">🚀</span><span class="btn-title">Cosmic Invaders</span></div></a>
+            <a href="frogger.html" class="arcade-link"><div class="arcade-button"><span class="btn-icon">🐸</span><span class="btn-title">Frog Hop</span></div></a>
+            <a href="breakout.html" class="arcade-link"><div class="arcade-button"><span class="btn-icon">🧱</span><span class="btn-title">Brick Breaker</span></div></a>
+            <a href="meteors.html" class="arcade-link"><div class="arcade-button"><span class="btn-icon">🪨</span><span class="btn-title">Meteor Strike</span></div></a>
+            <a href="solitaire.html" class="arcade-link"><div class="arcade-button"><span class="btn-icon">🃏</span><span class="btn-title">Solitaire</span></div></a>
+            <a href="snake.html" class="arcade-link"><div class="arcade-button"><span class="btn-icon">🐍</span><span class="btn-title">Cyber Snake</span></div></a>
+        </div>
+
+        <div id="diagnostic-panel">
+            <div class="diag-row">
+                <span>STATUS: <span style="color: #00ff66;">6 RUNTIMES DETECTED</span></span>
+                <span>VERSION: 0.1</span>
+            </div>
+            <div class="troubleshoot-log">
+                [DIAGNOSTIC LOG]: Awaiting input...
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

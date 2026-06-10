@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Brick Breaker - Infinite Edition (Fortified)</title>
+    <style>
+        body {
+            background-color: #0d0f12;
+            font-family: 'Courier New', Courier, monospace;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        #game-container {
+            background: #15181f;
+            border: 4px solid #33363f;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 102, 0.2);
+        }
+        .dashboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 480px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .exit-btn {
+            background: #2a1f2d;
+            border: 1px solid #ff00ff;
+            color: #ff00ff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .exit-btn:hover { background: #ff00ff; color: #000000; }
+        .stats-panel { display: flex; gap: 20px; }
+        #level-indicator { color: #ff00ff; }
+        #score-indicator { color: #00ff66; }
+        canvas {
+            background: #000;
+            border: 2px solid #444;
+            display: block;
+        }
+        .controls-tip {
+            text-align: center;
+            color: #666e7d;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            letter-spacing: 1px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="dashboard">
+        <a href="index.html" class="exit-btn">◀ MENU</a>
+        <div class="stats-panel">
+            <div id="level-indicator">STAGE: 1</div>
+            <div id="score-indicator">SCORE: 0</div>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas" width="480" height="400"></canvas>
+    
+    <div class="controls-tip">
+        ← / → ARROWS TO MOVE PADDLE<br>
+        <span style="color: #a44ac4;">[ CLICK MENU TO EXIT ]</span>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const levelDisplay = document.getElementById("level-indicator");
+    const scoreDisplay = document.getElementById("score-indicator");
+
+    let currentLevel = 1;
+    let score = 0;
+    let gameLoop;
+    let gameActive = false;
+    let keys = {};
+
+    let paddle = { x: 200, y: 370, width: 90, height: 12, speed: 7 };
+    let ball = { x: 240, y: 250, radius: 6, dx: 3, dy: -3, baseSpeed: 4.2 };
+
+    let bricks = [];
+    const brickRows = 4;
+    const brickCols = 8;
+    const brickWidth = 50;
+    const brickHeight = 20;
+    const brickPadding = 6;
+    const offsetTop = 40;
+    const offsetLeft = 20;
+
+    const brickSprites = ["🟥", "🟧", "🟨", "🟩"];
+
+    window.addEventListener("keydown", e => {
+        keys[e.code] = true;
+        if (["ArrowLeft", "ArrowRight", "Enter", "Space"].includes(e.code)) e.preventDefault();
+        if (!gameActive && e.code === "Enter") resetEntireGame();
+    });
+    window.addEventListener("keyup", e => { keys[e.code] = false; });
+
+    function initLevel(lvl) {
+        currentLevel = lvl;
+        levelDisplay.innerText = "STAGE: " + currentLevel;
+
+        paddle.width = Math.max(90 - (lvl * 5), 50);
+        paddle.x = (canvas.width / 2) - (paddle.width / 2);
+
+        let currentSpeed = ball.baseSpeed + (lvl * 0.5);
+        ball.x = canvas.width / 2;
+        ball.y = 250;
+        ball.dx = (Math.random() > 0.5 ? 1 : -1) * (currentSpeed * 0.7);
+        ball.dy = -currentSpeed * 0.7;
+
+        bricks = [];
+        for (let r = 0; r < brickRows; r++) {
+            for (let c = 0; c < brickCols; c++) {
+                bricks.push({
+                    x: (c * (brickWidth + brickPadding)) + offsetLeft,
+                    y: (r * (brickHeight + brickPadding)) + offsetTop,
+                    status: 1, 
+                    sprite: brickSprites[r % brickSprites.length]
+                });
+            }
+        }
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        gameActive = true;
+    }
+
+    function resetEntireGame() {
+        score = 0;
+        scoreDisplay.innerText = "SCORE: " + score;
+        initLevel(1);
+        clearInterval(gameLoop);
+        gameLoop = setInterval(update, 1000 / 60);
+    }
+
+    function update() {
+        if (!gameActive) return;
+
+        if (keys["ArrowLeft"] && paddle.x > 0) paddle.x -= paddle.speed;
+        if (keys["ArrowRight"] && paddle.x < canvas.width - paddle.width) paddle.x += paddle.speed;
+
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) ball.dx *= -1;
+        if (ball.y - ball.radius < 0) ball.dy *= -1;
+
+        if (ball.y + ball.radius >= paddle.y && 
+            ball.y - ball.radius <= paddle.y + paddle.height &&
+            ball.x >= paddle.x && 
+            ball.x <= paddle.x + paddle.width) {
+            
+            ball.dy = -Math.abs(ball.dy);
+            let hitPoint = ball.x - (paddle.x + paddle.width / 2);
+            ball.dx = hitPoint * 0.12; 
+        }
+
+        if (ball.y > canvas.height) {
+            triggerGameOver();
+            return;
+        }
+
+        for (let i = 0; i < bricks.length; i++) {
+            let b = bricks[i];
+            if (b.status === 1) {
+                if (ball.x > b.x && ball.x < b.x + brickWidth && 
+                    ball.y > b.y && ball.y < b.y + brickHeight) {
+                    
+                    ball.dy *= -1; 
+                    b.status = 0;  
+                    score += 25 * currentLevel;
+                    scoreDisplay.innerText = "SCORE: " + score;
+                    break;
+                }
+            }
+        }
+
+        if (bricks.every(b => b.status === 0)) {
+            currentLevel++;
+            initLevel(currentLevel);
+            return;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.font = "18px Arial";
+        bricks.forEach(b => {
+            if (b.status === 1) {
+                ctx.fillText(b.sprite, b.x + (brickWidth / 2), b.y + (brickHeight / 2));
+            }
+        });
+
+        ctx.fillStyle = "#00ff66";
+        ctx.shadowColor = "#00ff66";
+        ctx.shadowBlur = 6;
+        ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+        ctx.shadowBlur = 0; 
+
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function triggerGameOver() {
+        gameActive = false;
+        clearInterval(gameLoop);
+        
+        ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = "28px 'Courier New'";
+        ctx.fillStyle = "#ff0000";
+        ctx.fillText("BALL DROPPED", canvas.width / 2, canvas.height / 2 - 20);
+        
+        ctx.font = "16px 'Courier New'";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("FINAL SCORE: " + score, canvas.width / 2, canvas.height / 2 + 15);
+        
+        ctx.font = "13px 'Courier New'";
+        ctx.fillStyle = "#00ff66";
+        ctx.fillText("PRESS [ENTER] TO SPAWN NEW BALL", canvas.width / 2, canvas.height / 2 + 50);
+    }
+
+    resetEntireGame();
+</script>
+
+</body>
+</html>
