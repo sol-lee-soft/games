@@ -3,7 +3,7 @@
 A collection of 6 self-contained, high-performance arcade games designed for local desktop play or web deployment.
 
 ## 🚀 Launch Arcade
-**[Click here to play the Retro Arcade Console](https://your-username.github.io/Retro-Arcade-Console/)** *(Note: Replace "your-username" with your actual GitHub username once deployed)*
+**[Click here to play the Retro Arcade Console](https://sol-lee-soft.github.io/games/)** *(Note: Replace "your-username" with your actual GitHub username once deployed)*
 
 ## Core Runtimes (v0.1)
 * **Cosmic Invaders**: Classic space shooter with infinite scaling.
